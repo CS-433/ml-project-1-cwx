@@ -33,7 +33,7 @@ def predict_labels(weights, data):
     return y_pred
 
 
-def predict_labels2(weights, data):
+def one_hot_predict_labels(weights, data):
     """Generates class predictions given weights, and a test data matrix"""
     y_pred = np.zeros((len(data), 1))
     t = np.dot(data, weights)
@@ -59,33 +59,40 @@ def create_csv_submission(ids, y_pred, name):
 
 def standardize(train_data, test_data):
     """Standardize the original data set."""
-
     mean = np.mean(train_data, 0)
     train_data = train_data - mean
-
-    std = np.std(train_data, 0)
-
-    x = np.delete(train_data, np.where(std == 0), axis=1)
-    std = np.delete(std, np.where(std == 0), axis=0)
-
-    x = x / std
     test_data = test_data - mean
-    test_data = test_data / std
+    dev = np.std(train_data, 0)
+    x = np.delete(train_data, np.where(dev == 0), axis=1)
+    test_data = np.delete(test_data, np.where(dev == 0), axis=1)
+    dev = np.delete(dev, np.where(dev == 0), axis=0)
+    x = x / dev
+    test_data = test_data / dev
     return x, test_data
+
+
+def min_max_std(train_data, test_data):
+    max_ = np.max(train_data, axis=0)
+    min_ = np.min(train_data, axis=0)
+    for i in range(train_data.shape[1]):
+        train_data[:, i] = (train_data[:, i] - min_[i]) / (max_[i] - min_[i])
+        test_data[:, i] = (test_data[:, i] - min_[i]) / (max_[i] - min_[i])
+
+    return train_data, test_data
 
 
 def delete_outlier(data, target):
     index = np.ones((len(data), 1), dtype=int)
-    std = np.std(data, axis=0)
-    for i in range(len(std)):
-        index[np.where(data[:, i] > 3 * std[i])] = 0
+    dev = np.std(data, axis=0)
+    for i in range(len(dev)):
+        index[np.where(data[:, i] > 3 * dev[i])] = 0
 
     data = np.delete(data, np.where(index == 0), axis=0)
     target = np.delete(target, np.where(index == 0), axis=0)
     return data, target
 
 
-def accuracy(target, prediction):
+def compute_error(target, prediction):
     count = 0
     for i in range(len(target)):
         if target[i] != prediction[i]:
@@ -101,6 +108,26 @@ def build_poly(data, degree):
         for j in range(len(b)):
             b[j] = b[j] * data[j]
     return a
+
+
+def pca(train_data, test_data, level=0.999):
+    cov = np.cov(train_data, rowvar=0)
+    eig_val, eig_vect = np.linalg.eig(cov)
+    sorted_eig_val = np.sort(eig_val)[-1::-1]
+    n = 0
+    temp = 0
+    sum = np.sum(eig_val)
+    for i in sorted_eig_val:
+        temp = temp + i
+        n = n + 1
+        if temp > level * sum:
+            break
+
+    eig_index = (np.argsort(eig_val))[-1:-(n + 1):-1]
+    eig_vect = eig_vect[:, eig_index]
+    train_data = train_data.dot(eig_vect)
+    test_data = test_data.dot(eig_vect)
+    return train_data, test_data
 
 
 def convert_to_one_hot(x):
@@ -143,7 +170,6 @@ def data_preprocess(x, y, test_data, poly=False, degree=2):
     test_index = test_data[:, 22]
     test_data = np.delete(test_index, 22, axis=1)
     for i in range(4):
-
         a, b = fix_empty(x[np.where(index == i)], test_data[np.where(test_index == i)])
         a, b = standardize(a, b)
         if poly:
@@ -163,36 +189,35 @@ def cross_validation(x, y, n_fold=5, f=0, lambda_=0.0, epochs=300, gamma=1e-3, p
         data = np.concatenate((x[:a], x[a + step:]), axis=0)
         targets = np.concatenate((y[:a], y[a + step:]), axis=0)
         test_data, test_targets = x[a:a + step], y[a:a + step]
-        acc = 0
+        w = None
         if f == 1:
-            losses, ws = gradient_descent(targets, data, np.zeros((data.shape[1], targets.shape[1])), iteration=epochs,
-                                          gamma=gamma, print_output=p)
-            acc = accuracy(test_targets, predict_labels(ws[-1], test_data))
-        elif f == 2:
-            losses, ws = stochastic_gradient_descent(targets, data, np.zeros((data.shape[1], targets.shape[1])),
-                                                     iteration=epochs,
-                                                     gamma=gamma, batch_size=batch_size, print_output=p)
-            acc = accuracy(test_targets, predict_labels(ws[-1], test_data))
-        elif f == 3:
-            w, loss = least_squares(targets, data)
-            acc = accuracy(test_targets, predict_labels(w, test_data))
-        elif f == 4:
-            w, loss = ridge_regression(targets, data, lambda_)
-            acc = accuracy(test_targets, predict_labels(w, test_data))
-        elif f == 5:
-            losses, ws = logistic_regression(targets, data,
-                                             np.zeros((data.shape[1], targets.shape[1])), 10, 1e-6, False)
-            acc = accuracy(test_targets, predict_labels(ws[-1], test_data))
-        elif f == 6:
-            losses, ws = reg_logistic_regression(targets, data,
-                                                 np.zeros((data.shape[1], targets.shape[1])), 10, 1e-6,
-                                                 lambda_=0.3,
-                                                 print_output=False)
-            acc = accuracy(test_targets, predict_labels(ws[-1], test_data))
+            loss, w = gradient_descent(targets, data, np.zeros((data.shape[1], targets.shape[1])), iteration=epochs,
+                                       gamma=gamma, print_output=p)
 
-        res = acc / step
-        print(f, "train_error:", res)
-        result = result + res
+        elif f == 2:
+            loss, w = stochastic_gradient_descent(targets, data, np.zeros((data.shape[1], targets.shape[1])),
+                                                  iteration=epochs,
+                                                  gamma=gamma, batch_size=batch_size, print_output=p)
+
+        elif f == 3:
+            loss, w = least_squares(targets, data)
+
+        elif f == 4:
+            loss, w = ridge_regression(targets, data, lambda_)
+
+        elif f == 5:
+            loss, w = logistic_regression(targets, data,
+                                          np.zeros((data.shape[1], targets.shape[1])), 10, 1e-6, False)
+
+        elif f == 6:
+            loss, w = reg_logistic_regression(targets, data,
+                                              np.zeros((data.shape[1], targets.shape[1])), 10, 1e-6,
+                                              lambda_=0.3,
+                                              print_output=False)
+
+        acc = compute_error(test_targets, predict_labels(w, test_data)) / step
+        print(f, "train_error:", acc)
+        result = result + acc
         a = a + step
     result = result / n_fold
     return result

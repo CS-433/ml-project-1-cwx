@@ -32,7 +32,7 @@ def gradient_descent(y, x, wi, iteration, gamma, print_output=False):
             print("Gradient Descent({bi}/{ti}): loss={l}".format(
                 bi=n_iter, ti=iteration - 1, l=loss))
 
-    return losses, ws
+    return losses[-1], ws[-1]
 
 
 def compute_stoch_gradient(y, x, w):
@@ -62,7 +62,7 @@ def stochastic_gradient_descent(y, x, wi, iteration, gamma, batch_size=1, print_
             print("Gradient Descent({bi}/{ti}): loss={l}".format(
                 bi=n_iter, ti=iteration - 1, l=loss))
 
-    return losses, ws
+    return losses[-1], ws[-1]
 
 
 def compute_stoch_gradient2(y, x, w):
@@ -94,7 +94,7 @@ def stochastic_gradient_descent2(y, x, wi, iteration, gamma, batch_size=50, prin
             print("Gradient Descent({bi}/{ti}): loss={l}".format(
                 bi=n_iter, ti=iteration - 1, l=loss))
 
-    return losses, ws
+    return losses[-1], ws[-1]
 
 
 def adam1(y, x, wi, iteration, gamma, print_output=False, p1=0.9, p2=0.999, eps=1e-8):
@@ -116,7 +116,8 @@ def adam1(y, x, wi, iteration, gamma, print_output=False, p1=0.9, p2=0.999, eps=
             print("Gradient Descent({bi}/{ti}): loss={l}".format(
                 bi=n_iter, ti=iteration - 1, l=loss))
 
-    return losses, ws
+    return losses[-1], ws[-1]
+
 
 def adam2(y, x, wi, iteration, gamma, batch_size=1, print_output=False, p1=0.9, p2=0.999, eps=1e-8):
     """Stochastic gradient descent algorithm."""
@@ -125,11 +126,11 @@ def adam2(y, x, wi, iteration, gamma, batch_size=1, print_output=False, p1=0.9, 
     w = wi
     v = 0
     m = 0
-    g=gamma
+    g = gamma
     for n_iter in range(iteration):
         a = 0
         b = batch_size
-        g=gamma/(2*(n_iter+1))
+        g = gamma / (2 * (n_iter + 1))
         while a < len(x):
             if b >= len(y):
                 b = len(y)
@@ -147,21 +148,21 @@ def adam2(y, x, wi, iteration, gamma, batch_size=1, print_output=False, p1=0.9, 
             print("Gradient Descent({bi}/{ti}): loss={l}".format(
                 bi=n_iter, ti=iteration - 1, l=loss))
 
-    return losses, ws
+    return losses[-1], ws[-1]
 
 
 def least_squares(y, x):
     """"Least squares regression using normal equations"""
     g = x.transpose().dot(x)
     w = linalg.inv(g).dot(x.transpose()).dot(y)
-    return w, compute_loss(y, x, w)
+    return compute_loss(y, x, w), w
 
 
 def ridge_regression(y, x, lambda_=0):
     """Ridge regression using normal equations"""
     g = x.transpose().dot(x) + 2 * x.shape[0] * lambda_
     w = linalg.inv(g).dot(x.transpose()).dot(y)
-    return w, compute_loss(y, x, w)
+    return compute_loss(y, x, w), w
 
 
 def calculate_loss(y, x, w, lambda_=0):
@@ -205,7 +206,7 @@ def logistic_regression(y, x, wi, iteration, gamma, print_output=False):
             print("Gradient Descent({bi}/{ti}): loss={l}".format(
                 bi=i, ti=iteration - 1, l=loss))
 
-    return losses, ws
+    return losses[-1], ws[-1]
 
 
 def reg_logistic_regression(y, x, wi, iteration, gamma, lambda_, print_output=False):
@@ -224,4 +225,4 @@ def reg_logistic_regression(y, x, wi, iteration, gamma, lambda_, print_output=Fa
             print("Gradient Descent({bi}/{ti}): loss={l}".format(
                 bi=i, ti=iteration - 1, l=loss))
 
-    return losses, ws
+    return losses[-1], ws[-1]
