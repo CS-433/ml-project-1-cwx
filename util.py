@@ -163,23 +163,23 @@ def compute_error(target, prediction):
     return count
 
 
-def train_model(train_input, train_target, model, lambda_l2=0, learning_rate=1e-1, nb_epochs=1000,
+def train_model(input, target, model, lambda_l2=0, learning_rate=1e-1, nb_epochs=1000,
                 mini_batch_size=1000, print_res=False):
     criterion = MSE()
     optimizer = SGD(model, learning_rate)
     p1 = 0.9
     p2 = 0.999
     eps = 1e-8
-    index = np.arange(0, train_input.shape[0], 1, dtype=int)
+    index = np.arange(0, input.shape[0], 1, dtype=int)
     for e in range(0, nb_epochs + 1):
         loss = 0
         a = 0
         b = mini_batch_size
         while a < mini_batch_size:
-            if b >= len(train_input):
-                b = len(train_input)
-            output = model.forward(train_input[np.where(index % mini_batch_size == a)])
-            loss += criterion.forward(output, train_target[np.where(index % mini_batch_size == a)])
+            if b >= len(input):
+                b = len(input)
+            output = model.forward(input[np.where(index % mini_batch_size == a)])
+            loss += criterion.forward(output, target[np.where(index % mini_batch_size == a)])
             model.zero_grad()
             model.backward(criterion.backward())
             for (p, dp, m, v) in model.param():
@@ -216,7 +216,7 @@ y1, x1, y2, x2 = train_target[:200000], train_data[:200000], train_target[200000
 model = Sequential(Linear(x1.shape[1], 64), ReLU(), Linear(64, 16), ReLU(), Linear(16, 16), ReLU(),
                    Linear(16, y1.shape[1]))
 
-train_model(train_data, train_target, model, print_res=True)
+train_model(x1, y1, model, print_res=True)
 
 output = model.forward(x1)
 predicted = np.ones((len(output), 1), dtype=int)
