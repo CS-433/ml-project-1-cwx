@@ -17,5 +17,4 @@ train_model(train_data, train_target, model, print_res=False, nb_epochs=100, lam
 output = model.forward(test_data)
 predicted = np.ones((len(output), 1), dtype=int)
 predicted[np.where(output[:, 0] < output[:, 1])] = -1
-print(predicted)
 create_csv_submission(ids, predicted, 'submission')
