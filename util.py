@@ -26,10 +26,6 @@ class Linear(Module):
         self.dw = np.zeros(self.w.shape)
         self.db = np.zeros(self.b.shape)
         self.x = 0
-        self.m1 = np.zeros(self.w.shape)
-        self.v1 = np.zeros(self.w.shape)
-        self.m2 = np.zeros(self.b.shape)
-        self.v2 = np.zeros(self.b.shape)
 
     def forward(self, x, test=False):
         self.x = x
@@ -44,7 +40,7 @@ class Linear(Module):
         return (self.w.transpose().dot(gradwrtoutput)).transpose()
 
     def param(self):
-        return [[self.w, self.dw, self.m1, self.v1], [self.b, self.db, self.m2, self.v2]]
+        return [[self.w, self.dw], [self.b, self.db]]
 
     def zero_grad(self):
         self.dw = np.zeros(self.dw.shape)
@@ -163,67 +159,38 @@ def compute_error(target, prediction):
     return count
 
 
-def train_model(input, target, model, lambda_l2=0, learning_rate=1e-1, nb_epochs=1000,
-                mini_batch_size=1000, print_res=False):
+
+def train_model(input, target, model, lambda_l2=0.0, learning_rate=1e-1, nb_epochs=300,
+                mini_batch_size=1000, print_res=False,test_data=None, test_target=None):
     criterion = MSE()
-    optimizer = SGD(model, learning_rate)
-    p1 = 0.9
-    p2 = 0.999
-    eps = 1e-8
-    index = np.arange(0, input.shape[0], 1, dtype=int)
     for e in range(0, nb_epochs + 1):
         loss = 0
         a = 0
         b = mini_batch_size
-        while a < mini_batch_size:
+        lr = 2 * learning_rate / np.sqrt(e + 1)
+        while a < len(input):
             if b >= len(input):
                 b = len(input)
-            output = model.forward(input[np.where(index % mini_batch_size == a)])
-            loss += criterion.forward(output, target[np.where(index % mini_batch_size == a)])
+
+            output = model.forward(input[a:b])
+            loss += criterion.forward(output, target[a:b])
             model.zero_grad()
             model.backward(criterion.backward())
-            for (p, dp, m, v) in model.param():
+            for (p, dp) in model.param():
                 p *= (1 - lambda_l2)
                 p -= learning_rate * dp
-            a = a + 1
+            a = b
             b = b + mini_batch_size
+        if print_res:
+            print("epoch", e, "loss", loss)
+            if e % 10 == 0:
+                output = model.forward(input)
+                predicted = np.ones((len(output), 1), dtype=int)
+                predicted[np.where(output[:, 0] > output[:, 1])] = 0
+                print("train_error", compute_error(target, predicted) / input.shape[0])
+                output = model.forward(test_data)
+                predicted = np.ones((len(output), 1), dtype=int)
+                predicted[np.where(output[:, 0] > output[:, 1])] = 0
+                print("test_error", compute_error(test_target, predicted) / test_data.shape[0])
 
-        if e % 10 == 0 and print_res:
-            print(e)
-            output = model.forward(x1)
-            predicted = np.ones((len(output), 1), dtype=int)
-            predicted[np.where(output[:, 0] > output[:, 1])] = 0
-            print("train", compute_error(y1, predicted) / x1.shape[0])
-            output = model.forward(x2)
-            predicted = np.ones((len(output), 1), dtype=int)
-            predicted[np.where(output[:, 0] > output[:, 1])] = 0
-            print("test", compute_error(y2, predicted) / x2.shape[0])
 
-
-train_path = "data/train.csv/train.csv"
-test_path = "data/test.csv/test.csv"
-train_target, train_data, _ = load_csv_data(train_path)
-train_target = train_target.reshape((len(train_target), 1))
-_, text_data, ids = load_csv_data(test_path)
-
-train_data, text_data = fix_empty(train_data, text_data)
-train_data, text_data = standardize(train_data, text_data)
-train_data, text_data = pca(train_data, text_data)
-train_target = convert_to_one_hot(train_target)
-
-y1, x1, y2, x2 = train_target[:200000], train_data[:200000], train_target[200000:], train_data[200000:]
-
-model = Sequential(Linear(x1.shape[1], 64), ReLU(), Linear(64, 16), ReLU(), Linear(16, 16), ReLU(),
-                   Linear(16, y1.shape[1]))
-
-train_model(x1, y1, model, print_res=True)
-
-output = model.forward(x1)
-predicted = np.ones((len(output), 1), dtype=int)
-predicted[np.where(output[:, 0] > output[:, 1])] = 0
-print("train_error", compute_error(y1, predicted) / y1.shape[0])
-
-output = model.forward(x2)
-predicted = np.ones((len(output), 1), dtype=int)
-predicted[np.where(output[:, 0] > output[:, 1])] = 0
-print("test_error", compute_error(y2, predicted) / y2.shape[0])
