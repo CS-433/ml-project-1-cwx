@@ -58,21 +58,36 @@ def create_csv_submission(ids, y_pred, name):
             writer.writerow({'Id': int(r1), 'Prediction': int(r2)})
 
 
-def standardize(train_data, test_data):
-    """Standardize the original data set."""
+def standardize(train_data, test_data=None):
+    """Standardize the original data set, deleting column with standard deviation 0."""
     mean = np.mean(train_data, 0)
     train_data = train_data - mean
-    test_data = test_data - mean
+    if test_data is not None:
+        test_data = test_data - mean
     dev = np.std(train_data, 0)
     train_data = np.delete(train_data, np.where(dev == 0), axis=1)
-    test_data = np.delete(test_data, np.where(dev == 0), axis=1)
+    if test_data is not None:
+        test_data = np.delete(test_data, np.where(dev == 0), axis=1)
     dev = np.delete(dev, np.where(dev == 0), axis=0)
     train_data = train_data / dev
-    test_data = test_data / dev
+    if test_data is not None:
+        test_data = test_data / dev
+    return train_data, test_data
+
+
+def lognormal(train_data, test_data=None):
+    """Standardize the log transformed data set ."""
+    train_data = train_data + 1000
+    train_data = np.log(train_data)
+    if test_data is not None:
+        test_data = test_data + 1000
+        test_data = np.log(test_data)
+    train_data, test_data = standardize(train_data, test_data)
     return train_data, test_data
 
 
 def min_max_std(train_data, test_data):
+    """Map the data value to the interval from 0 to 1."""
     max_ = np.max(train_data, axis=0)
     min_ = np.min(train_data, axis=0)
     train_data = (train_data - min_) / (max_ - min_)
@@ -81,6 +96,7 @@ def min_max_std(train_data, test_data):
 
 
 def delete_outlier(data, target, t=3):
+    """Delete extreme value."""
     dev = np.std(data, axis=0)
     for i in range(data.shape[1]):
         target = target[np.abs(data[:, i]) < t * dev[i]]
@@ -89,18 +105,45 @@ def delete_outlier(data, target, t=3):
 
 
 def accuracy(target, prediction):
+    """Return the accuracy of the prediction."""
     return np.mean(target == prediction)
 
 
 def build_poly(data, degree):
+    """Generate polynomial feature without cross terms."""
     output = np.hstack((data,
                         *[data ** d for d in range(2, degree + 1)]))
     output = (output - np.mean(output, axis=0)) / np.std(output, axis=0)
-
     return np.hstack((np.ones((data.shape[0], 1)), output))
 
 
+def build_poly2(data, degree):
+    """Generate polynomial feature with cross terms."""
+    coef = np.zeros((degree, data.shape[1]))
+    coef[0] = 1
+    for i in range(1, degree):
+        for j in range(data.shape[1] - 1, -1, -1):
+            coef[i, j] = np.sum(coef[i - 1, j:])
+    temp2 = data.astype('float64')
+    out = data.astype('float64')
+    for i in range(1, degree):
+        temp1 = temp2
+        for index, j in enumerate(coef[i]):
+            if index == 0:
+                temp2 = np.array(
+                    [temp1[:, l] * data[:, index] for l in range(int(temp1.shape[1] - j), temp1.shape[1])],
+                    dtype='float64').transpose()
+            else:
+                temp2 = np.hstack((temp2, np.array([temp1[:, l] * data[:, index] for l in
+                                                    range(int(temp1.shape[1] - j), temp1.shape[1])],
+                                                   dtype='float64').transpose()))
+        out = np.hstack((out, temp2)).astype('float64')
+    # out = (out - np.mean(out, axis=0)) / np.std(out, axis=0)
+    return np.hstack((np.ones((data.shape[0], 1), dtype='float64'), out)).astype('float64')
+
+
 def pca(train_data, test_data, level=0.99):
+    """Project the data into a lower dimension"""
     cov = np.cov(train_data, rowvar=0)
     eig_val, eig_vect = np.linalg.eig(cov)
     sorted_eig_val = np.sort(eig_val)[-1::-1]
@@ -120,6 +163,7 @@ def pca(train_data, test_data, level=0.99):
 
 
 def convert_to_one_hot(x):
+    """Use one hot encoding"""
     y = np.zeros((len(x), 2))
     y[np.where(x == 1), 0] = 1
     y[np.where(x == -1), 1] = 1
@@ -127,6 +171,7 @@ def convert_to_one_hot(x):
 
 
 def convert_to_original(x):
+    """Convert one hot data in to original data"""
     y = np.zeros((len(x), 1))
     y[np.where(x[:, 0] == 1)] = 1
     y[np.where(x[:, 1] == 1)] = -1
@@ -134,6 +179,8 @@ def convert_to_original(x):
 
 
 def fix_empty(train_data, text_data, t=0.9):
+    """Fix missing value,missing value will be replaced with the median.
+    Column with too many missing values will be deleted."""
     index = np.zeros((len(train_data), 1))
     i = 0
     while i < train_data.shape[1]:
@@ -151,6 +198,7 @@ def fix_empty(train_data, text_data, t=0.9):
 
 
 def split_data_by_categories(x, y, test_data, test_id):
+    """Split data into 4 group by category number."""
     xs = []
     ys = []
     ts = []
@@ -167,8 +215,9 @@ def split_data_by_categories(x, y, test_data, test_id):
     return xs, ys, ts, ids
 
 
-def preprocess(train_data, train_target, test_data, ids, split=True, std_=True, type='z-norm', poly=True,
-               degree=1, fix_emp=True, embedding=True, t=0.99):
+def preprocess(train_data, train_target, test_data, ids, split=True, std_=False, type='z-norm', poly=False,
+               cross_term=False, degree=1, fix_emp=False, embedding=False, t=0.99):
+    """Preprocess the data"""
     if split:
 
         xs, ys, ts, ids = split_data_by_categories(train_data, train_target, test_data, ids)
@@ -183,26 +232,37 @@ def preprocess(train_data, train_target, test_data, ids, split=True, std_=True, 
         if type == 'z-norm':
             for i in range(len(xs)):
                 xs[i], ts[i] = standardize(xs[i], ts[i])
+        elif type == 'log-norm':
+            for i in range(len(xs)):
+                xs[i], ts[i] = lognormal(xs[i], ts[i])
         else:
             for i in range(len(xs)):
                 xs[i], ts[i] = min_max_std(xs[i], ts[i])
-
-    if poly:
-        xs = [build_poly(xs[i], degree) for i in range(len(xs))]
-        ts = [build_poly(ts[i], degree) for i in range(len(ts))]
 
     if embedding:
         for i in range(len(xs)):
             xs[i], ts[i] = pca(xs[i], ts[i], t)
 
+    if poly:
+        if cross_term:
+            xs = [build_poly2(xs[i], degree) for i in range(len(xs))]
+            ts = [build_poly2(ts[i], degree) for i in range(len(ts))]
+        else:
+            xs = [build_poly(xs[i], degree) for i in range(len(xs))]
+            ts = [build_poly(ts[i], degree) for i in range(len(ts))]
+
     return xs, ys, ts, ids
 
 
-def cross_validation(x, y, n_fold=5, f='gradient_descent', lambda_=0.0, epochs=300, gamma=1e-1, p=False, batch_size=50):
+def cross_validation(x, y, n_fold=5, f='gradient_descent', lambda_=0.0, epochs=300, gamma=1e-1, batch_size=50,
+                     n_units=128, n_layers=3, print_res=False,
+                     delete_out=False, level=3, fix_emp=False, t=0.9, normalize=False, norm_type='z-norm', poly=False,
+                     cross_term=False, degree=1, embedding=False, embedding_level=0.99):
+    """Cross validation"""
     a = 0
-    step = int(0.9+len(x) / n_fold)
+    step = int(0.9 + len(x) / n_fold)
     result = 0
-    count=0
+    count = 0
     while a < len(x):
         end = a + step
         if end > len(x):
@@ -210,42 +270,66 @@ def cross_validation(x, y, n_fold=5, f='gradient_descent', lambda_=0.0, epochs=3
         data = np.concatenate((x[:a], x[end:]), axis=0)
         targets = np.concatenate((y[:a], y[end:]), axis=0)
         test_data, test_targets = x[a:end], y[a:end]
+        if fix_emp:
+            data, test_data = fix_empty(data, test_data, t)
+        if normalize:
+            if norm_type == 'z-norm':
+                data, test_data = standardize(data, test_data)
+            elif norm_type == 'log-norm':
+                data, test_data = lognormal(data, test_data)
+            else:
+                data, test_data = min_max_std(data, test_data)
+        if delete_out:
+            data, targets = delete_outlier(data, targets, level)
+        if embedding:
+            data, test_data = pca(data, test_data, embedding_level)
+        if poly:
+            if cross_term:
+                data = build_poly2(data, degree)
+                test_data = build_poly2(test_data, degree)
+            else:
+                data = build_poly(data, degree)
+                test_data = build_poly(test_data, degree)
+
         w = None
         if f == 'gradient_descent':
             loss, w = gradient_descent(targets, data, np.zeros((data.shape[1], targets.shape[1])), iteration=epochs,
-                                       gamma=gamma, print_output=p)
+                                       gamma=gamma, print_output=print_res)
 
         elif f == 'stochastic_gradient_descent':
             loss, w = stochastic_gradient_descent(targets, data, np.zeros((data.shape[1], targets.shape[1])),
-                                                  iteration=epochs, gamma=gamma, batch_size=batch_size, print_output=p)
+                                                  iteration=epochs, gamma=gamma, batch_size=batch_size,
+                                                  print_output=print_res)
 
         elif f == 'least_squares':
             loss, w = least_squares(targets, data)
 
         elif f == 'ridge_regression':
+
             loss, w = ridge_regression(targets, data, lambda_)
 
         elif f == 'logistic_regression':
             loss, w = logistic_regression(targets, data,
                                           np.zeros((data.shape[1], targets.shape[1])), iteration=epochs, gamma=gamma,
-                                          print_output=p)
+                                          print_output=print_res)
         elif f == 'reg_logistic_regression':
             loss, w = reg_logistic_regression(targets, data,
                                               np.zeros((data.shape[1], targets.shape[1])), iteration=epochs,
-                                              gamma=gamma, print_output=p, lambda_=lambda_)
+                                              gamma=gamma, print_output=print_res, lambda_=lambda_)
         if f == 'dnn':
-            net = Sequential(Linear(data.shape[1], 128), ReLU(), Linear(128, 128), ReLU(),
-                             Linear(128, targets.shape[1]))
-
-            train_model(data, targets, net, print_res=p, nb_epochs=epochs, lambda_l2=lambda_, learning_rate=gamma,
-                        test_data=test_data, test_target=test_targets)
+            net = Sequential(Linear(data.shape[1], n_units), ReLU())
+            for i in range(n_layers - 2):
+                net.add_module(Linear(n_units, n_units))
+                net.add_module(ReLU())
+            net.add_module(Linear(n_units, targets.shape[1]))
+            train_model(data, targets, net, print_res=print_res, nb_epochs=epochs, lambda_l2=lambda_,
+                        learning_rate=gamma, test_data=test_data, test_target=test_targets, mini_batch_size=batch_size)
             output = net.forward(test_data)
             predicted = np.ones((len(output), 1), dtype=int)
             predicted[np.where(output[:, 0] > output[:, 1])] = 0
             acc = 1 - compute_error(test_targets, predicted) / test_data.shape[0]
         else:
             acc = accuracy(test_targets, predict_labels(w, test_data))
-
         print(f, "accuracy:", acc)
         result = result + acc
         count += 1

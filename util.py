@@ -2,7 +2,7 @@ import numpy as np
 
 from proj1_helpers import *
 
-
+"""The class Module represents the basic structure of each module"""
 class Module(object):
     def forward(self, *input):
         raise NotImplementedError
@@ -17,6 +17,7 @@ class Module(object):
         None
 
 
+"""The module Linear defines a fully connected layer, applying a linear transformation to the input data"""
 class Linear(Module):
     def __init__(self, i_dim, o_dim):
         super(Linear, self).__init__()
@@ -47,6 +48,7 @@ class Linear(Module):
         self.db = np.zeros(self.db.shape)
 
 
+"""The module ReLu applies the rectified linear unit activation function to convert input value into positive numbers"""
 class ReLU(Module):
     def __init__(self):
         super(ReLU, self).__init__()
@@ -64,6 +66,7 @@ class ReLU(Module):
         return np.multiply(gradwrtoutput, x)
 
 
+"""The module Tanh applies the hyperbolic tangent activation function tanh to map the input values in range(-1,1)"""
 class Tanh(Module):
     def __init__(self):
         super(Tanh, self).__init__()
@@ -77,6 +80,7 @@ class Tanh(Module):
         return 4 * (np.power(np.exp(self.x) + np.exp(-1 * self.x), -2)) * gradwrtoutput
 
 
+"""The module Dropout set a random part of input data to zero to reduce overfitting"""
 class Dropout(Module):
     def __init__(self, prob=0.0):
         super(Dropout, self).__init__()
@@ -94,6 +98,7 @@ class Dropout(Module):
         return np.multiply(gradwrtoutput, self.mask) / (1 - self.prob)
 
 
+"""The module MSE deals with the computation of the mean squared error"""
 class MSE(Module):
     def __init__(self):
         self.error = None
@@ -108,6 +113,7 @@ class MSE(Module):
         return self.error / self.n
 
 
+"""The module SGD executes the stochastic gradient descent to optimize the parameters of the model"""
 class SGD(Module):
 
     def __init__(self, modules, learning_rate=0.001):
@@ -119,11 +125,14 @@ class SGD(Module):
             p = p - self.lr * dp
 
 
+"""The module Sequential builts the sequential structures by combining different modules"""
 class Sequential(Module):
 
     def __init__(self, *modules):
         super().__init__()
-        self.modules = modules
+        self.modules = []
+        for mod in modules:
+            self.modules.append(mod)
 
     def add_module(self, module):
         self.modules.append(module)
@@ -151,6 +160,7 @@ class Sequential(Module):
             module.zero_grad()
 
 
+"""Compute the number of errors in the prediction"""
 def compute_error(target, prediction):
     count = 0
     for i in range(target.shape[0]):
@@ -159,15 +169,15 @@ def compute_error(target, prediction):
     return count
 
 
-
-def train_model(input, target, model, lambda_l2=0.0, learning_rate=1e-1, nb_epochs=300,
-                mini_batch_size=1000, print_res=False,test_data=None, test_target=None):
+"""Train the model with cosine annealing algorithm"""
+def train_model(input, target, model, lambda_l2=0.0, learning_rate=1e-1, nb_epochs=300, T=100,
+                mini_batch_size=1000, print_res=False, test_data=None, test_target=None):
     criterion = MSE()
     for e in range(0, nb_epochs + 1):
+        lr = 0.5 * (1 + np.cos(np.pi * e / T)) * learning_rate
         loss = 0
         a = 0
         b = mini_batch_size
-        lr = 2 * learning_rate / np.sqrt(e + 1)
         while a < len(input):
             if b >= len(input):
                 b = len(input)
@@ -178,11 +188,11 @@ def train_model(input, target, model, lambda_l2=0.0, learning_rate=1e-1, nb_epoc
             model.backward(criterion.backward())
             for (p, dp) in model.param():
                 p *= (1 - lambda_l2)
-                p -= learning_rate * dp
+                p -= lr * dp
             a = b
             b = b + mini_batch_size
         if print_res:
-            print("epoch", e, "loss", loss)
+            print("epoch", e, "loss", loss, "lr", lr)
             if e % 10 == 0:
                 output = model.forward(input)
                 predicted = np.ones((len(output), 1), dtype=int)
@@ -192,5 +202,3 @@ def train_model(input, target, model, lambda_l2=0.0, learning_rate=1e-1, nb_epoc
                 predicted = np.ones((len(output), 1), dtype=int)
                 predicted[np.where(output[:, 0] > output[:, 1])] = 0
                 print("test_error", compute_error(test_target, predicted) / test_data.shape[0])
-
-

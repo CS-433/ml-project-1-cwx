@@ -98,7 +98,7 @@ def stochastic_gradient_descent2(y, x, wi, iteration, gamma, batch_size=50, prin
 
 
 def adam1(y, x, wi, iteration, gamma, print_output=False, p1=0.9, p2=0.999, eps=1e-8):
-    """Gradient descent algorithm."""
+    """Gradient descent algorithm using adaptive momentum estimation."""
     ws = [wi]
     losses = [compute_loss(y, x, wi)]
     w = wi
@@ -120,7 +120,7 @@ def adam1(y, x, wi, iteration, gamma, print_output=False, p1=0.9, p2=0.999, eps=
 
 
 def adam2(y, x, wi, iteration, gamma, batch_size=1, print_output=False, p1=0.9, p2=0.999, eps=1e-8):
-    """Stochastic gradient descent algorithm."""
+    """Stochastic gradient descent algorithm using adaptive momentum estimation."""
     ws = [wi]
     losses = [compute_loss(y, x, wi)]
     w = wi
@@ -170,7 +170,7 @@ def calculate_loss(y, x, w, lambda_=0):
     res = 0.00
     for i in range(len(y)):
         res = res + np.log(1 + np.exp(x[i].transpose().dot(w))) - y[i] * x[i].transpose().dot(w)
-
+    res = res / len(y)
     return res + lambda_ * w.transpose().dot(w) / 2
 
 
@@ -180,6 +180,7 @@ def sigmod(x):
 
 
 def std(x):
+    """standardization."""
     x = x - np.mean(x)
     x = x / np.std(x)
     return x
