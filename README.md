@@ -13,10 +13,13 @@ We implemented a machine learning model to recreate the discovering process of t
 
 * `proj1_helpers.py`: some helper functions for project 1
 
-* `util.py`: 
+* `util.py`: Implement modules to crate deep neural network
 
-## Data preparatiion
+* `Result.ipynb`: Used to show the results of cross validation of various models
 
-## Feature Generation
+* `run.py` :  create csv predictions submitted to the competition system
 
-## Cross-validation 
+## Requirements
+* Python 3.8.5 
+* Jupyter Notebook 6.1.4
+* Numpy 1.20.3
