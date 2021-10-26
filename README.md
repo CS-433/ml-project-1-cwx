@@ -9,15 +9,15 @@ We implemented a machine learning model to recreate the discovering process of t
 ## File Description
 * `main.py`: Use the functions in `implementation.py` to compute loss and last weight vector.
 
-* `implementation.py`: implement functions to compute gradient descent (GD), stochastic gradient descent (SGD), least squares, ridge regression, logistic regression, and regularized logistic regression. 
+* `implementation.py`: Implement functions to compute gradient descent (GD), stochastic gradient descent (SGD), least squares, ridge regression, logistic regression, and regularized logistic regression. 
 
-* `proj1_helpers.py`: some helper functions for project 1
+* `proj1_helpers.py`: Some helper functions for project 1
 
-* `util.py`: Implement modules to crate deep neural network
+* `util.py`: Implements modules to crate deep neural network
 
 * `Result.ipynb`: Used to show the results of cross validation of various models
 
-* `run.py` :  create csv predictions submitted to the competition system
+* `run.py` :  Creates csv predictions submitted to the competition system
 
 ## Requirements
 * Python 3.8.5 
