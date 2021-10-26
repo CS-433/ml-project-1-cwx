@@ -33,6 +33,12 @@ def predict_labels(weights, data):
     y_pred[np.where(y_pred > 0)] = 1
     return y_pred
 
+def predict_labels2(weights, data):
+    """Generates class predictions given weights, and a test data matrix"""
+    y_pred = np.dot(data, weights)
+    y_pred[np.where(y_pred <= 0.5)] = 0
+    y_pred[np.where(y_pred > 0.5)] = 1
+    return y_pred
 
 def one_hot_predict_labels(weights, data):
     """Generates class predictions given weights, and a test data matrix"""
@@ -138,7 +144,7 @@ def build_poly2(data, degree):
                                                     range(int(temp1.shape[1] - j), temp1.shape[1])],
                                                    dtype='float64').transpose()))
         out = np.hstack((out, temp2)).astype('float64')
-    # out = (out - np.mean(out, axis=0)) / np.std(out, axis=0)
+    #out = (out - np.mean(out, axis=0)) / np.std(out, axis=0)
     return np.hstack((np.ones((data.shape[0], 1), dtype='float64'), out)).astype('float64')
 
 
@@ -295,28 +301,39 @@ def cross_validation(x, y, n_fold=5, f='gradient_descent', lambda_=0.0, epochs=3
         if f == 'gradient_descent':
             loss, w = gradient_descent(targets, data, np.zeros((data.shape[1], targets.shape[1])), iteration=epochs,
                                        gamma=gamma, print_output=print_res)
+            acc = accuracy(test_targets, predict_labels(w, test_data))
 
         elif f == 'stochastic_gradient_descent':
             loss, w = stochastic_gradient_descent(targets, data, np.zeros((data.shape[1], targets.shape[1])),
                                                   iteration=epochs, gamma=gamma, batch_size=batch_size,
                                                   print_output=print_res)
+            acc = accuracy(test_targets, predict_labels(w, test_data))
 
         elif f == 'least_squares':
             loss, w = least_squares(targets, data)
+            acc = accuracy(test_targets, predict_labels(w, test_data))
 
         elif f == 'ridge_regression':
-
             loss, w = ridge_regression(targets, data, lambda_)
+            acc = accuracy(test_targets, predict_labels(w, test_data))
 
         elif f == 'logistic_regression':
+            targets[targets == -1] = 0
+            test_targets[test_targets == -1] = 0
             loss, w = logistic_regression(targets, data,
                                           np.zeros((data.shape[1], targets.shape[1])), iteration=epochs, gamma=gamma,
                                           print_output=print_res)
+            acc = accuracy(test_targets, predict_labels2(w, test_data))
+
         elif f == 'reg_logistic_regression':
+            targets[targets == -1] = 0
+            test_targets[test_targets == -1] = 0
             loss, w = reg_logistic_regression(targets, data,
                                               np.zeros((data.shape[1], targets.shape[1])), iteration=epochs,
                                               gamma=gamma, print_output=print_res, lambda_=lambda_)
-        if f == 'dnn':
+            acc = accuracy(test_targets, predict_labels2(w, test_data))
+
+        elif f == 'dnn':
             net = Sequential(Linear(data.shape[1], n_units), ReLU())
             for i in range(n_layers - 2):
                 net.add_module(Linear(n_units, n_units))
@@ -328,8 +345,7 @@ def cross_validation(x, y, n_fold=5, f='gradient_descent', lambda_=0.0, epochs=3
             predicted = np.ones((len(output), 1), dtype=int)
             predicted[np.where(output[:, 0] > output[:, 1])] = 0
             acc = 1 - compute_error(test_targets, predicted) / test_data.shape[0]
-        else:
-            acc = accuracy(test_targets, predict_labels(w, test_data))
+
         print(f, "accuracy:", acc)
         result = result + acc
         count += 1
