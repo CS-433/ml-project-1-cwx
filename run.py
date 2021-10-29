@@ -1,5 +1,4 @@
 from proj1_helpers import *
-from implementation import *
 from util import *
 """Load data"""
 train_path = "data/train.csv/train.csv"
@@ -16,7 +15,8 @@ train_target = convert_to_one_hot(train_target)
 """Create dnn model and train the model"""
 model = Sequential(Linear(train_data.shape[1], 128), ReLU(), Linear(128, 128), ReLU(),
                    Linear(128, train_target.shape[1]))
-train_model(train_data, train_target, model, print_res=False, nb_epochs=300, lambda_l2=1e-6, learning_rate=1e-1)
+train_model(train_data, train_target, model, crit='mse', print_res=False, nb_epochs=480,
+            mini_batch_size=100, lambda_l2=8e-6, learning_rate=1e-1, cosine=True)
 
 """Predict test_data and create submission file"""
 output = model.forward(test_data)

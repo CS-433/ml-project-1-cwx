@@ -4,6 +4,7 @@ import csv
 import numpy as np
 from implementation import *
 from util import *
+import matplotlib.pyplot as plt
 
 
 def load_csv_data(data_path, sub_sample=False):
@@ -33,12 +34,14 @@ def predict_labels(weights, data):
     y_pred[np.where(y_pred > 0)] = 1
     return y_pred
 
+
 def predict_labels2(weights, data):
     """Generates class predictions given weights, and a test data matrix"""
     y_pred = np.dot(data, weights)
     y_pred[np.where(y_pred <= 0.5)] = 0
     y_pred[np.where(y_pred > 0.5)] = 1
     return y_pred
+
 
 def one_hot_predict_labels(weights, data):
     """Generates class predictions given weights, and a test data matrix"""
@@ -115,37 +118,35 @@ def accuracy(target, prediction):
     return np.mean(target == prediction)
 
 
-def build_poly(data, degree):
-    """Generate polynomial feature without cross terms."""
-    output = np.hstack((data,
-                        *[data ** d for d in range(2, degree + 1)]))
-    output = (output - np.mean(output, axis=0)) / np.std(output, axis=0)
-    return np.hstack((np.ones((data.shape[0], 1)), output))
-
-
-def build_poly2(data, degree):
-    """Generate polynomial feature with cross terms."""
-    coef = np.zeros((degree, data.shape[1]))
-    coef[0] = 1
-    for i in range(1, degree):
-        for j in range(data.shape[1] - 1, -1, -1):
-            coef[i, j] = np.sum(coef[i - 1, j:])
-    temp2 = data.astype('float64')
-    out = data.astype('float64')
-    for i in range(1, degree):
-        temp1 = temp2
-        for index, j in enumerate(coef[i]):
-            if index == 0:
-                temp2 = np.array(
-                    [temp1[:, l] * data[:, index] for l in range(int(temp1.shape[1] - j), temp1.shape[1])],
-                    dtype='float64').transpose()
-            else:
-                temp2 = np.hstack((temp2, np.array([temp1[:, l] * data[:, index] for l in
-                                                    range(int(temp1.shape[1] - j), temp1.shape[1])],
-                                                   dtype='float64').transpose()))
-        out = np.hstack((out, temp2)).astype('float64')
-    #out = (out - np.mean(out, axis=0)) / np.std(out, axis=0)
-    return np.hstack((np.ones((data.shape[0], 1), dtype='float64'), out)).astype('float64')
+def build_poly(data, degree, bias=True, cross_term=False):
+    """Generate polynomial feature."""
+    if cross_term:
+        coef = np.zeros((degree, data.shape[1]))
+        coef[0] = 1
+        for i in range(1, degree):
+            for j in range(data.shape[1] - 1, -1, -1):
+                coef[i, j] = np.sum(coef[i - 1, j:])
+        temp2 = data.astype('float64')
+        output = data.astype('float64')
+        for i in range(1, degree):
+            temp1 = temp2
+            for index, j in enumerate(coef[i]):
+                if index == 0:
+                    temp2 = np.array(
+                        [temp1[:, l] * data[:, index] for l in range(int(temp1.shape[1] - j), temp1.shape[1])],
+                        dtype='float64').transpose()
+                else:
+                    temp2 = np.hstack((temp2, np.array([temp1[:, l] * data[:, index] for l in
+                                                        range(int(temp1.shape[1] - j), temp1.shape[1])],
+                                                       dtype='float64').transpose()))
+            output = np.hstack((output, temp2)).astype('float64')
+    else:
+        output = np.hstack((data,
+                            *[data ** d for d in range(2, degree + 1)]))
+        output = (output - np.mean(output, axis=0)) / np.std(output, axis=0)
+    if bias:
+        output = np.hstack((np.ones((data.shape[0], 1)), output))
+    return output
 
 
 def pca(train_data, test_data, level=0.99):
@@ -225,7 +226,6 @@ def preprocess(train_data, train_target, test_data, ids, split=True, std_=False,
                cross_term=False, degree=1, fix_emp=False, embedding=False, t=0.99):
     """Preprocess the data"""
     if split:
-
         xs, ys, ts, ids = split_data_by_categories(train_data, train_target, test_data, ids)
     else:
         xs, ys, ts, ids = [train_data], [train_target], [test_data], [ids]
@@ -250,18 +250,14 @@ def preprocess(train_data, train_target, test_data, ids, split=True, std_=False,
             xs[i], ts[i] = pca(xs[i], ts[i], t)
 
     if poly:
-        if cross_term:
-            xs = [build_poly2(xs[i], degree) for i in range(len(xs))]
-            ts = [build_poly2(ts[i], degree) for i in range(len(ts))]
-        else:
-            xs = [build_poly(xs[i], degree) for i in range(len(xs))]
-            ts = [build_poly(ts[i], degree) for i in range(len(ts))]
+        xs = [build_poly(xs[i], degree, cross_term=cross_term) for i in range(len(xs))]
+        ts = [build_poly(ts[i], degree, cross_term=cross_term) for i in range(len(ts))]
 
     return xs, ys, ts, ids
 
 
 def cross_validation(x, y, n_fold=5, f='gradient_descent', lambda_=0.0, epochs=300, gamma=1e-1, batch_size=50,
-                     n_units=128, n_layers=3, print_res=False,
+                     n_units=128, n_layers=3, crit='mse', cosine=False, print_res=False,
                      delete_out=False, level=3, fix_emp=False, t=0.9, normalize=False, norm_type='z-norm', poly=False,
                      cross_term=False, degree=1, embedding=False, embedding_level=0.99):
     """Cross validation"""
@@ -290,12 +286,8 @@ def cross_validation(x, y, n_fold=5, f='gradient_descent', lambda_=0.0, epochs=3
         if embedding:
             data, test_data = pca(data, test_data, embedding_level)
         if poly:
-            if cross_term:
-                data = build_poly2(data, degree)
-                test_data = build_poly2(test_data, degree)
-            else:
-                data = build_poly(data, degree)
-                test_data = build_poly(test_data, degree)
+            data = build_poly(data, degree, cross_term=cross_term)
+            test_data = build_poly(test_data, degree, cross_term=cross_term)
 
         w = None
         if f == 'gradient_descent':
@@ -338,13 +330,14 @@ def cross_validation(x, y, n_fold=5, f='gradient_descent', lambda_=0.0, epochs=3
             for i in range(n_layers - 2):
                 net.add_module(Linear(n_units, n_units))
                 net.add_module(ReLU())
-            net.add_module(Linear(n_units, targets.shape[1]))
-            train_model(data, targets, net, print_res=print_res, nb_epochs=epochs, lambda_l2=lambda_,
-                        learning_rate=gamma, test_data=test_data, test_target=test_targets, mini_batch_size=batch_size)
+            net.add_module(Linear(n_units, 2))
+            train_model(data, targets, net, print_res=print_res, nb_epochs=epochs, lambda_l2=lambda_, crit=crit,
+                        cosine=cosine, learning_rate=gamma, test_data=test_data, test_target=test_targets,
+                        mini_batch_size=batch_size)
             output = net.forward(test_data)
             predicted = np.ones((len(output), 1), dtype=int)
             predicted[np.where(output[:, 0] > output[:, 1])] = 0
-            acc = 1 - compute_error(test_targets, predicted) / test_data.shape[0]
+            acc = compute_error(test_targets, predicted, crit=crit)
 
         print(f, "accuracy:", acc)
         result = result + acc
@@ -352,3 +345,14 @@ def cross_validation(x, y, n_fold=5, f='gradient_descent', lambda_=0.0, epochs=3
         a = a + step
     result = result / count
     return result
+
+
+def plot_res(xs,types,title=None):
+    for x,t in zip(xs,types):
+        plt.plot(range(0,len(x)), np.array(x), label=t)
+    plt.ylabel("Accuracy[%]")
+    plt.xlabel("Epochs")
+    plt.legend()
+    if title is not None:
+        plt.title(title)
+    plt.show()
