@@ -4,12 +4,18 @@ __Team Member__: Zewei XU, Haoxuan WANG, Ganyuan CAO
 
 
 ## Project Description
-We implemented a machine learning model to recreate the discovering process of the Higgs particle with the data provided by ATLAS experiment at CERN. We implement several regression algorithms in our model. 
+We implemented a machine learning model on CERN particle accelerator data to recreate the process of discovering the Higgs particle. In our model, we implemented several regression algorithms. We evaluated our model with the AiCrowd platform, and with local validation data. Our model achieves relatively high categorical accuracy on AiCrowd and our local cross-validation. 
 
 ## File Description
 * `main.py`: Use the functions in `implementation.py` to compute loss and last weight vector.
 
-* `implementation.py`: Implement functions to compute gradient descent (GD), stochastic gradient descent (SGD), least squares, ridge regression, logistic regression, and regularized logistic regression. 
+* `implementation.py`: Implement
+  *  Linear Regression with Gradient Descent (GD)
+  *  Linear Regression with Stochastic Gradient Descent (SGD) using Mini-Batch-Size-1
+  *  Least Squares Regression with Normal Equation
+  *  Ridge Regression with Normal Equation
+  *  Logistic Regression 
+  *  Regularized Logistic Regression. 
 
 * `proj1_helpers.py`: Some helper functions for project 1
 
