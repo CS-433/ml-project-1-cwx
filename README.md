@@ -18,7 +18,12 @@ We implemented a machine learning model on CERN particle accelerator data to rec
   *  Regularized Logistic Regression. 
 
 * `proj1_helpers.py`: Some helper functions for project 1
-
+  * Functions for normalization: standardize(), lognormal(), min_max_std();
+  * Functions for data cleaning: fix_empty(), delete_outlier();
+  * Function for generate polynomial features: build_poly();
+  * Function for embedding: pca();
+  * Function for validation: cross_validation().
+    
 * `util.py`: Implements modules to crate deep neural network
   *  Class Linear
   *  Class ReLU
@@ -30,6 +35,8 @@ We implemented a machine learning model on CERN particle accelerator data to rec
   *  Class Sequential
 
 * `Result.ipynb`: Used to show the results of cross validation of various models
+
+* `DNN_Result.ipynb`: Used to show the results of DNN with different optimization function
 
 * `run.py` :  Creates csv predictions submitted to the competition system
 
