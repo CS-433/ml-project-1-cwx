@@ -4,7 +4,7 @@ __Team Member__: Zewei XU, Haoxuan WANG, Ganyuan CAO
 
 
 ## Project Description
-We implemented a machine learning model on CERN particle accelerator data to recreate the process of discovering the Higgs particle. In our model, we implemented several regression algorithms. We evaluated our model with the AiCrowd platform, and with local validation data. Our model achieves relatively high categorical accuracy on AiCrowd and our local cross-validation. 
+We implemented a machine learning model on CERN particle accelerator data to recreate the process of discovering the Higgs particle. In our model, we implemented several regression algorithms and a mini deep learning framework. We evaluated our model on the AiCrowd platform, and with local cross-validation. Our model achieves relatively high categorical accuracy on AiCrowd and our local cross-validation. 
 
 ## File Description
 * `main.py`: Use the functions in `implementation.py` to compute loss and last weight vector.
