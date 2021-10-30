@@ -20,6 +20,14 @@ We implemented a machine learning model on CERN particle accelerator data to rec
 * `proj1_helpers.py`: Some helper functions for project 1
 
 * `util.py`: Implements modules to crate deep neural network
+  *  Class Linear
+  *  Class ReLU
+  *  Class Tanh
+  *  Class Dropout
+  *  Class MSE
+  *  Class CEL
+  *  Class SGD
+  *  Class Sequential
 
 * `Result.ipynb`: Used to show the results of cross validation of various models
 
