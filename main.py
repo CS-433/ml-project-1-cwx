@@ -11,14 +11,14 @@ train_data, test_data = standardize(train_data, test_data)
 
 
 loss, w = gradient_descent(train_target, train_data,
-                           np.zeros((train_data.shape[1], train_target.shape[1])), 300, 1e-3, False)
+                           np.zeros((train_data.shape[1], train_target.shape[1])), 300, 1e-1, False)
 print("gradient_descent:",
       "train_accuracy:", accuracy(train_target, predict_labels(w, train_data)),
       ";  test_accuracy:",
       accuracy(test_target, predict_labels(w, test_data)))
 
 loss, w = stochastic_gradient_descent(train_target, train_data,
-                                      np.zeros((train_data.shape[1], train_target.shape[1])), 300, 1e-3,
+                                      np.zeros((train_data.shape[1], train_target.shape[1])), 300, 1e-2,
                                       batch_size=1,
                                       print_output=False)
 print("stochastic_gradient_descent:",
