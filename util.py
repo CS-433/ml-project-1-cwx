@@ -1,6 +1,6 @@
 import numpy as np
-
 from proj1_helpers import *
+np.random.seed(0)
 
 
 class Module(object):
@@ -69,42 +69,6 @@ class ReLU(Module):
         x[x > 0] = 1
         x[x < 0] = 0
         return np.multiply(gradwrtoutput, x)
-
-
-class ELU(Module):
-    """The module ReLu applies the rectified linear unit activation function to convert input value into positive
-    numbers """
-
-    def __init__(self, alpha):
-        super(ELU, self).__init__()
-        self.x = None
-        self.alpha = alpha
-
-    def forward(self, x, test=False):
-        self.x = x
-        return
-
-    def backward(self, gradwrtoutput):
-        return np.multiply(gradwrtoutput, np.where(self.x > 0, np.ones_like(self.x), self.alpha * np.exp(self.x)))
-
-
-class SeLU(Module):
-    """The module SeLU applies the rectified linear unit activation function to convert input value into positive
-    numbers """
-
-    def __init__(self, alpha=1.0507009873554804934193349852946, lambda_=1.6732632423543772848170429916717):
-        super(SeLU, self).__init__()
-        self.x = None
-        self.lambda_ = lambda_
-        self.alpha = alpha
-
-    def forward(self, x, test=False):
-        self.x = x
-        return self.lambda_ * np.where(x > 0, x, self.alpha * (np.exp(x) - 1))
-
-    def backward(self, gradwrtoutput):
-        return np.multiply(gradwrtoutput, np.where(
-            self.x >= 0, np.ones_like(self.x) * self.lambda_, np.exp(self.x) * self.alpha * self.lambda_))
 
 
 class Tanh(Module):
@@ -242,7 +206,7 @@ def compute_error(target, prediction, crit='mse'):
     return count
 
 
-def train_model(input, target, model, crit='mse', lambda_l2=0.0, learning_rate=1e-1, nb_epochs=300, T=50,
+def train_model(input, target, model, crit='mse', lambda_l2=0.0, learning_rate=1e-1, nb_epochs=300, T=100,
                 mini_batch_size=1000, print_res=False, test_data=None, test_target=None, cosine=False):
     """Train the model with cosine annealing algorithm"""
     criterion = None
@@ -251,9 +215,9 @@ def train_model(input, target, model, crit='mse', lambda_l2=0.0, learning_rate=1
     elif crit == 'cel':
         criterion = CEL()
     lr = learning_rate
-    losses = []
-    train_res = []
-    test_res = []
+    losses=[]
+    train_res=[]
+    test_res=[]
     for e in range(0, nb_epochs + 1):
         if cosine:
             lr = 0.5 * (1 + np.cos(np.pi * e / T)) * learning_rate
@@ -281,14 +245,14 @@ def train_model(input, target, model, crit='mse', lambda_l2=0.0, learning_rate=1
                 output = model.forward(input, True)
                 predicted = np.ones((len(output), 1), dtype=int)
                 predicted[np.where(output[:, 0] > output[:, 1])] = 0
-                acc = compute_error(target, predicted, crit)
+                acc= compute_error(target, predicted, crit)
                 train_res.append(acc)
-                print("train_acc", acc)
+                print("train_acc",acc)
                 output = model.forward(test_data, True)
                 predicted = np.ones((len(output), 1), dtype=int)
                 predicted[np.where(output[:, 0] > output[:, 1])] = 0
-                acc = compute_error(test_target, predicted, crit)
+                acc=compute_error(test_target, predicted, crit)
                 test_res.append(acc)
-                print("test_acc", acc)
+                print("test_acc",acc)
 
-    return losses, train_res, test_res
+    return losses,train_res,test_res

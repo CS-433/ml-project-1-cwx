@@ -1,6 +1,8 @@
 import numpy as np
 from numpy import linalg
 
+np.random.seed(0)
+
 
 def compute_loss(y, x, w):
     """Calculate the loss using mse."""
